@@ -1,6 +1,6 @@
 # Monte Carlo-Based Solar Irradiance Uncertainty Analysis
 
-This project applies Monte Carlo simulation to analyse hourly solar irradiance uncertainty using historical and recent solar radiation data.
+This project applies Monte Carlo simulation to analyse and predict hourly solar irradiance uncertainty using historical and recent solar radiation data.
 
 The work focuses on Global Horizontal Irradiance (GHI) prediction uncertainty. Instead of predicting one exact future irradiance value, the method estimates a statistical range of possible GHI outcomes using historical clear-sky-normalised behaviour.
 
