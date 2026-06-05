@@ -41,7 +41,8 @@ The main variables used in this project are:
 Night-time and very low solar input periods were excluded using:
 
 ```text
-Clear-sky GHI > 50 W/m²```
+Clear-sky GHI > 50 W/m²
+```
 
 
 ## Data Preprocessing
