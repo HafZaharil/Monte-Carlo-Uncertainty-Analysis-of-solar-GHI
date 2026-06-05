@@ -146,6 +146,7 @@ The R² value was calculated between the actual GHI and each Monte Carlo predict
 
 The analysis focuses on R² because the main objective is to assess how well the predicted GHI trend follows the actual measured GHI.
 
+---
 
 # 2.0 Results and Disucssion
 
@@ -156,3 +157,10 @@ The analysis focuses on R² because the main objective is to assess how well the
 | 23 May 2026 | 0.946 | 0.951 | 0.895 | 0.963 | 0.960 | 0.961 | 0.950 | 0.963 |
 | 24 May 2026 | 0.927 | 0.939 | 0.774 | 0.971 | 0.965 | 0.966 | 0.950 | 0.971 |
 | 25 May 2026 | 0.937 | 0.952 | 0.708 | 0.983 | 0.977 | 0.978 | 0.963 | 0.983 |
+
+
+## Discussion
+The results above show that there is strong correlation for all methods againts unseen data of the three days, wit hthe exception of the the 5th percentile, proving that the historical data tend to be bias upward. It can be seen that the recent 7-day rolling method tend to show better fit relative to the historical same-hour method, but the difference is small, proving that both methods is quite suitable to be used to predict GHI with resonable accuracy. 
+
+
+
