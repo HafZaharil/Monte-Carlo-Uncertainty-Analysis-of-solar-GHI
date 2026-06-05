@@ -1,0 +1,473 @@
+import os
+import numpy as np
+import pandas as pd
+import matplotlib
+matplotlib.use("MacOSX")
+import matplotlib.pyplot as plt
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+
+# ============================================================
+# File paths addresses
+# ============================================================
+
+actual_file = "../data/23_24_25_May_time_series.csv"
+prediction_file = "../data/MonteCarlo_GHI_Whole_2026.csv"
+
+output_metrics_csv = "../results/MonteCarlo_23_24_25_May_Comparison_Metrics.csv"
+
+figure_output_folder = "../figures"
+
+
+# ============================================================
+# Helper functions
+# ============================================================
+
+def find_column(df, keywords):
+    """
+    Find a column using partial keyword matching.
+    This avoids problems caused by slightly different header names.
+    """
+    for col in df.columns:
+        name = str(col).lower()
+        if all(k.lower() in name for k in keywords):
+            return col
+    raise ValueError(f"Column not found for keywords: {keywords}")
+
+
+def read_file(path):
+    """
+    Read CSV or Excel files.
+    """
+    print("Reading file:", path)
+
+    if path.lower().endswith(".csv"):
+        return pd.read_csv(path)
+
+    elif path.lower().endswith(".xlsx"):
+        return pd.read_excel(path, engine="openpyxl")
+
+    elif path.lower().endswith(".xls"):
+        return pd.read_excel(path)
+
+    else:
+        raise ValueError("Unknown file type: " + path)
+
+
+def clean_time(series):
+    """
+    Convert timestamps while keeping the written clock hour.
+    This prevents unwanted time-zone hour shifts.
+    """
+    return pd.to_datetime(series).dt.tz_localize(None)
+
+
+# ============================================================
+# Load unseen actual GHI data
+# ============================================================
+
+actual = read_file(actual_file)
+
+time_col_actual = find_column(actual, ["period"])
+ghi_col_actual = find_column(actual, ["ghi"])
+
+actual["Time"] = clean_time(actual[time_col_actual])
+actual["Date"] = actual["Time"].dt.date
+actual["Hour"] = actual["Time"].dt.hour
+actual["Actual GHI"] = pd.to_numeric(actual[ghi_col_actual], errors="coerce")
+
+actual = actual[["Time", "Date", "Hour", "Actual GHI"]].dropna()
+
+
+# ============================================================
+# Load Monte Carlo prediction results
+# ============================================================
+
+pred = read_file(prediction_file)
+
+time_col_pred = find_column(pred, ["time"])
+
+pred["Time"] = clean_time(pred[time_col_pred])
+pred["Date"] = pred["Time"].dt.date
+pred["Hour"] = pred["Time"].dt.hour
+
+
+# ============================================================
+# Identify Monte Carlo prediction columns
+# ============================================================
+
+historical_mean_col = find_column(pred, ["same", "mean", "ghi"])
+historical_median_col = find_column(pred, ["same", "median", "ghi"])
+historical_p05_col = find_column(pred, ["same", "5th", "ghi"])
+historical_p95_col = find_column(pred, ["same", "95th", "ghi"])
+
+rolling_mean_col = find_column(pred, ["rolling", "mean", "ghi"])
+rolling_median_col = find_column(pred, ["rolling", "median", "ghi"])
+rolling_p05_col = find_column(pred, ["rolling", "5th", "ghi"])
+rolling_p95_col = find_column(pred, ["rolling", "95th", "ghi"])
+
+
+# ============================================================
+# Prepare prediction dataframe
+# ============================================================
+
+pred_clean = pred[[
+    "Time", "Date", "Hour",
+    historical_mean_col,
+    historical_median_col,
+    historical_p05_col,
+    historical_p95_col,
+    rolling_mean_col,
+    rolling_median_col,
+    rolling_p05_col,
+    rolling_p95_col
+]].copy()
+
+pred_clean = pred_clean.rename(columns={
+    historical_mean_col: "Historical same-hour mean",
+    historical_median_col: "Historical same-hour median",
+    historical_p05_col: "Historical same-hour 5th percentile",
+    historical_p95_col: "Historical same-hour 95th percentile",
+
+    rolling_mean_col: "Recent 7-day rolling mean",
+    rolling_median_col: "Recent 7-day rolling median",
+    rolling_p05_col: "Recent 7-day rolling 5th percentile",
+    rolling_p95_col: "Recent 7-day rolling 95th percentile"
+})
+
+for col in pred_clean.columns:
+    if col not in ["Time", "Date", "Hour"]:
+        pred_clean[col] = pd.to_numeric(pred_clean[col], errors="coerce")
+
+
+# ============================================================
+# Merge actual GHI with Monte Carlo predictions
+# ============================================================
+
+merged = pd.merge(
+    actual,
+    pred_clean,
+    on=["Date", "Hour"],
+    how="inner",
+    suffixes=("_actual", "_pred")
+)
+
+merged = merged.sort_values(["Date", "Hour"]).reset_index(drop=True)
+
+print("\nMerged preview:")
+print(merged.head(50).to_string(index=False))
+
+
+# ============================================================
+# Calculate validation metrics
+# ============================================================
+
+prediction_cols = [
+    "Historical same-hour mean",
+    "Historical same-hour median",
+    "Historical same-hour 5th percentile",
+    "Historical same-hour 95th percentile",
+    "Recent 7-day rolling mean",
+    "Recent 7-day rolling median",
+    "Recent 7-day rolling 5th percentile",
+    "Recent 7-day rolling 95th percentile"
+]
+
+metric_rows = []
+
+for date_value in sorted(merged["Date"].unique()):
+
+    day_df = merged[merged["Date"] == date_value].copy()
+    actual_values = day_df["Actual GHI"]
+
+    for col in prediction_cols:
+
+        predicted_values = day_df[col]
+
+        valid = pd.DataFrame({
+            "actual": actual_values,
+            "predicted": predicted_values
+        }).dropna()
+
+        if len(valid) < 2:
+            continue
+
+        mae = mean_absolute_error(valid["actual"], valid["predicted"])
+        rmse = np.sqrt(mean_squared_error(valid["actual"], valid["predicted"]))
+        r2_python = r2_score(valid["actual"], valid["predicted"])
+        rsq_excel_style = np.corrcoef(valid["actual"], valid["predicted"])[0, 1] ** 2
+        bias = (valid["predicted"] - valid["actual"]).mean()
+
+        metric_rows.append({
+            "Date": date_value,
+            "Prediction": col,
+            "MAE (W/m²)": mae,
+            "RMSE (W/m²)": rmse,
+            "Python R²": r2_python,
+            "Excel-style RSQ": rsq_excel_style,
+            "Bias: Prediction - Actual (W/m²)": bias
+        })
+
+metrics = pd.DataFrame(metric_rows)
+
+print("\nMetrics:")
+print(metrics.to_string(index=False))
+
+os.makedirs("../results", exist_ok=True)
+metrics.to_csv(output_metrics_csv, index=False)
+
+print(f"\nMetrics exported to:\n{output_metrics_csv}")
+
+
+# ============================================================
+# R² helper for figure legends
+# ============================================================
+
+def get_r2_for_day(day_df, prediction_col):
+    valid = day_df[["Actual GHI", prediction_col]].dropna()
+
+    if len(valid) < 2:
+        return np.nan
+
+    return r2_score(
+        valid["Actual GHI"],
+        valid[prediction_col]
+    )
+
+
+# ============================================================
+# Figure export settings
+# ============================================================
+
+os.makedirs(figure_output_folder, exist_ok=True)
+
+
+def save_figure(fig, figure_name):
+    output_path = os.path.join(figure_output_folder, figure_name)
+
+    fig.savefig(
+        output_path,
+        dpi=600,
+        bbox_inches="tight",
+        pad_inches=0.02
+    )
+
+    print(f"Figure exported to: {output_path}")
+
+
+# ============================================================
+# Figure 1: actual GHI vs mean and median predictions
+# ============================================================
+
+def plot_mean_median(day_df, date_value):
+
+    r2_hist_mean = get_r2_for_day(day_df, "Historical same-hour mean")
+    r2_hist_median = get_r2_for_day(day_df, "Historical same-hour median")
+    r2_roll_mean = get_r2_for_day(day_df, "Recent 7-day rolling mean")
+    r2_roll_median = get_r2_for_day(day_df, "Recent 7-day rolling median")
+
+    fig, ax = plt.subplots(figsize=(12, 6))
+
+    ax.plot(
+        day_df["Hour"],
+        day_df["Actual GHI"],
+        label="Actual GHI",
+        linewidth=2.4
+    )
+
+    ax.plot(
+        day_df["Hour"],
+        day_df["Historical same-hour mean"],
+        label=f"Historical same-hour mean, R²={r2_hist_mean:.3f}",
+        linewidth=1.4,
+        linestyle="--"
+    )
+
+    ax.plot(
+        day_df["Hour"],
+        day_df["Historical same-hour median"],
+        label=f"Historical same-hour median, R²={r2_hist_median:.3f}",
+        linewidth=1.4
+    )
+
+    ax.plot(
+        day_df["Hour"],
+        day_df["Recent 7-day rolling mean"],
+        label=f"Recent 7-day rolling mean, R²={r2_roll_mean:.3f}",
+        linewidth=1.4,
+        linestyle="--"
+    )
+
+    ax.plot(
+        day_df["Hour"],
+        day_df["Recent 7-day rolling median"],
+        label=f"Recent 7-day rolling median, R²={r2_roll_median:.3f}",
+        linewidth=1.4
+    )
+
+    ax.set_xlabel("Hour")
+    ax.set_ylabel("GHI (W/m²)")
+    ax.set_title(f"Actual GHI vs Monte Carlo Mean and Median on {date_value}")
+    ax.legend()
+
+    ax.set_xticks(
+        np.arange(
+            int(day_df["Hour"].min()),
+            int(day_df["Hour"].max()) + 1,
+            1
+        )
+    )
+
+    y_min = min(
+        day_df["Actual GHI"].min(),
+        day_df["Historical same-hour mean"].min(),
+        day_df["Historical same-hour median"].min(),
+        day_df["Recent 7-day rolling mean"].min(),
+        day_df["Recent 7-day rolling median"].min()
+    )
+
+    y_max = max(
+        day_df["Actual GHI"].max(),
+        day_df["Historical same-hour mean"].max(),
+        day_df["Historical same-hour median"].max(),
+        day_df["Recent 7-day rolling mean"].max(),
+        day_df["Recent 7-day rolling median"].max()
+    )
+
+    y_min_plot = max(0, np.floor((y_min - 50) / 50) * 50)
+    y_max_plot = np.ceil((y_max + 50) / 50) * 50
+
+    ax.set_ylim(y_min_plot, y_max_plot)
+    ax.set_yticks(np.arange(y_min_plot, y_max_plot + 1, 50))
+
+    ax.grid(
+        True,
+        which="major",
+        linestyle="--",
+        linewidth=0.6,
+        alpha=0.6
+    )
+
+    fig.tight_layout()
+
+    safe_date = str(date_value).replace("-", "_")
+
+    save_figure(
+        fig,
+        f"{safe_date}_figure_1_mean_median.png"
+    )
+
+    plt.show()
+
+
+# ============================================================
+# Figure 2: actual GHI vs 5th and 95th percentile predictions
+# ============================================================
+
+def plot_percentile_range(day_df, date_value):
+
+    fig, ax = plt.subplots(figsize=(12, 6))
+
+    ax.plot(
+        day_df["Hour"],
+        day_df["Actual GHI"],
+        label="Actual GHI",
+        linewidth=2.4
+    )
+
+    ax.plot(
+        day_df["Hour"],
+        day_df["Historical same-hour 5th percentile"],
+        label="Historical same-hour 5th percentile",
+        linewidth=1.8,
+        linestyle="--",
+        alpha=0.65
+    )
+
+    ax.plot(
+        day_df["Hour"],
+        day_df["Historical same-hour 95th percentile"],
+        label="Historical same-hour 95th percentile",
+        linewidth=1.8,
+        linestyle="-",
+        alpha=0.65
+    )
+
+    ax.plot(
+        day_df["Hour"],
+        day_df["Recent 7-day rolling 5th percentile"],
+        label="Recent 7-day rolling 5th percentile",
+        linewidth=1.8,
+        linestyle=":",
+        alpha=0.85
+    )
+
+    ax.plot(
+        day_df["Hour"],
+        day_df["Recent 7-day rolling 95th percentile"],
+        label="Recent 7-day rolling 95th percentile",
+        linewidth=1.8,
+        linestyle="-.",
+        alpha=0.85
+    )
+
+    ax.set_xlabel("Hour")
+    ax.set_ylabel("GHI (W/m²)")
+    ax.set_title(f"Actual GHI vs Monte Carlo 5th and 95th Percentiles on {date_value}")
+    ax.legend()
+
+    ax.set_xticks(
+        np.arange(
+            int(day_df["Hour"].min()),
+            int(day_df["Hour"].max()) + 1,
+            1
+        )
+    )
+
+    y_min = min(
+        day_df["Actual GHI"].min(),
+        day_df["Historical same-hour 5th percentile"].min(),
+        day_df["Recent 7-day rolling 5th percentile"].min()
+    )
+
+    y_max = max(
+        day_df["Actual GHI"].max(),
+        day_df["Historical same-hour 95th percentile"].max(),
+        day_df["Recent 7-day rolling 95th percentile"].max()
+    )
+
+    y_min_plot = max(0, np.floor((y_min - 50) / 50) * 50)
+    y_max_plot = np.ceil((y_max + 50) / 50) * 50
+
+    ax.set_ylim(y_min_plot, y_max_plot)
+    ax.set_yticks(np.arange(y_min_plot, y_max_plot + 1, 50))
+
+    ax.grid(
+        True,
+        which="major",
+        linestyle="--",
+        linewidth=0.6,
+        alpha=0.6
+    )
+
+    fig.tight_layout()
+
+    safe_date = str(date_value).replace("-", "_")
+
+    save_figure(
+        fig,
+        f"{safe_date}_figure_2_percentile_lines.png"
+    )
+
+    plt.show()
+
+
+# ============================================================
+# Generate and export figures
+# ============================================================
+
+for date_value in sorted(merged["Date"].unique()):
+
+    day_df = merged[merged["Date"] == date_value].copy()
+
+    plot_mean_median(day_df, date_value)
+    plot_percentile_range(day_df, date_value)
