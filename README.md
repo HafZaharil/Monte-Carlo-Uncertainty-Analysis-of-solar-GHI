@@ -164,8 +164,16 @@ The results above show that there is strong correlation for all methods againts 
 
 The figures below shows the visualisation of the comparisons between the two examined monte carlo methods agaisnt real data of the three days from 23rd to 25th of May 2026.
 
-<img width="7040" height="3436" alt="2026_05_23_figure_2_percentile_lines" src="https://github.com/user-attachments/assets/7fc9289e-b0fc-4dc0-961b-c64ddc432b56" />
+23rd May
 <img width="7040" height="3436" alt="2026_05_23_figure_1_mean_median" src="https://github.com/user-attachments/assets/ad7f18b4-ced0-48ce-a372-30c78b9487fe" />
+<img width="7040" height="3436" alt="2026_05_23_figure_2_percentile_lines" src="https://github.com/user-attachments/assets/849774ec-a87c-4957-8c2d-64659a9f8650" />
 
+24th May
+<img width="7040" height="3436" alt="2026_05_24_figure_1_mean_median" src="https://github.com/user-attachments/assets/aa607155-c4c2-46ec-a7b5-8d7e5de692ca" />
+<img width="7040" height="3436" alt="2026_05_24_figure_2_percentile_lines" src="https://github.com/user-attachments/assets/8cd262d3-6bdd-422e-b90c-6ac79ee582dd" />
+
+25th May
+<img width="7040" height="3436" alt="2026_05_25_figure_1_mean_median" src="https://github.com/user-attachments/assets/c31f5d4c-ef3d-4b2b-abab-396e3b2df274" />
+<img width="7040" height="3436" alt="2026_05_25_figure_2_percentile_lines" src="https://github.com/user-attachments/assets/59889b9d-1aee-4684-8c18-cbce32995e56" />
 
 
