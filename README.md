@@ -162,5 +162,10 @@ The analysis focuses on R² because the main objective is to assess how well the
 ## Discussion
 The results above show that there is strong correlation for all methods againts unseen data of the three days, wit hthe exception of the the 5th percentile, proving that the historical data tend to be bias upward. It can be seen that the recent 7-day rolling method tend to show better fit relative to the historical same-hour method, but the difference is small, proving that both methods is quite suitable to be used to predict GHI with resonable accuracy. 
 
+The figures below shows the visualisation of the comparisons between the two examined monte carlo methods agaisnt real data of the three days from 23rd to 25th of May 2026.
+
+<img width="7040" height="3436" alt="2026_05_23_figure_2_percentile_lines" src="https://github.com/user-attachments/assets/7fc9289e-b0fc-4dc0-961b-c64ddc432b56" />
+<img width="7040" height="3436" alt="2026_05_23_figure_1_mean_median" src="https://github.com/user-attachments/assets/ad7f18b4-ced0-48ce-a372-30c78b9487fe" />
+
 
 
