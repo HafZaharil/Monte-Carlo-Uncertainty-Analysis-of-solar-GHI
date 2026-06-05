@@ -32,7 +32,7 @@ The results are then compared against unseen measured GHI data which are the dat
 
 ## 1.1 Data Source
 
-The solar irradiance data were obtained from a time-series dataset for the Abu Dhabi region.
+The solar irradiance data were obtained from a time-series dataset for the Abu Dhabi region from solcast.
 
 The main variables used in this project are:
 
