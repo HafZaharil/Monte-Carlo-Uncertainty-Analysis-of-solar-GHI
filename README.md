@@ -28,6 +28,8 @@ The results are then compared against unseen measured GHI data which are the dat
 
 ---
 
+# 1. Methodology
+
 ## Data Source
 
 The solar irradiance data were obtained from a time-series dataset for the Abu Dhabi region.
