@@ -4,7 +4,7 @@ This project applies Monte Carlo simulation to analyse and predict hourly solar 
 
 The work focuses on Global Horizontal Irradiance (GHI) prediction uncertainty. Instead of predicting one exact future irradiance value, the method estimates a statistical range of possible GHI outcomes using historical clear-sky-normalised behaviour.
 
-The Monte Carlo results are validated against unseen GHI data from **23, 24, and 25 May 2026**. The results shows that R^2 values for each of the 23, 24 and 25 of May 2026 amount to 
+The Monte Carlo results are validated against unseen GHI data from **23, 24, and 25 May 2026**. The results shows that R^2 values for each of the 23, 24 and 25 of May 2026 amount to more than 0.9
 
 ---
 
